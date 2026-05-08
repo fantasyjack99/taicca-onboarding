@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model OnboardingSession {
+  id            String    @id @default(uuid())
+  token         String    @unique
+  status        Status    @default(PENDING)
+
+  // HR-filled fields
+  name          String    @db.VarChar(50)
+  department    String    @db.VarChar(100)
+  division      String    @db.VarChar(100)
+  title         String    @db.VarChar(100)
+  startDate     DateTime  @db.Date
+  contactEmail  String    @db.VarChar(255)
+
+  // Employee-filled fields (null until submitted)
+  taiccaEmail   String?   @db.VarChar(255)  // firstname.lastname (不含 @taicca.tw)
+  englishFirst  String?   @db.VarChar(50)   // 英文名 (first name)
+  englishLast   String?   @db.VarChar(50)   // 英文姓 (last name)
+  englishName   String?   @db.VarChar(100)  // 名片全名（可自訂）
+  showPhone     Boolean?
+  phoneNumber   String?   @db.VarChar(30)   // 手機號碼（showPhone=true 時填寫）
+  photoPath     String?   @db.VarChar(500)
+
+  // HR confirmation
+  employeeId    String?   @db.VarChar(20)
+  ragicSyncedAt DateTime?
+
+  // Ragic employee cache (fetched once on page load, used for local uniqueness check)
+  ragicCache    Json?
+
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime
+  submittedAt   DateTime?
+  confirmedAt   DateTime?
+
+  @@index([status])
+  @@index([taiccaEmail])
+  @@index([englishName])
+}
+
+// Department list cached from metalpig.synology.me:3300
+model DepartmentCache {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  divisions Json
+  updatedAt DateTime @updatedAt
+}
+
+// 系統設定（token 等，可從後台更新，無需重新部署）
+model SystemConfig {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+enum Status {
+  PENDING
+  SUBMITTED
+  CONFIRMED
+}
