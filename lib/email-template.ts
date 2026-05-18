@@ -91,6 +91,7 @@ interface RenderData {
   startDate: string
   deadlineStr: string
   onboardingUrl: string
+  formsUrl: string      // 員工基本資料表單連結
   baseUrl: string
 }
 
@@ -117,6 +118,10 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
   const attachStyle = `display:inline-block;border:1px solid ${cfg.buttonBg};color:${cfg.buttonBg};padding:7px 16px;text-decoration:none;font-size:13px;border-radius:3px;margin:4px 4px 0 0;`
 
   const button = `<a href="${data.onboardingUrl}" style="${btnStyle}">${cfg.buttonLabel}</a>`
+  const formsButton = data.formsUrl
+    ? `<a href="${data.formsUrl}" style="${btnStyle}background:#555555;">→ 填寫員工基本資料表單</a>`
+    : ''
+  const buttonGroup = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 10px;">${button}${formsButton}</div>`
 
   const attachLinks = cfg.showSec2Attachments ? `
     <div style="margin-top:12px;">
@@ -130,9 +135,9 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
 
   let sec1Inner = ''
   if (cfg.buttonPosition === 'before-warning') {
-    sec1Inner = button + warning + sec1body
+    sec1Inner = buttonGroup + warning + sec1body
   } else if (cfg.buttonPosition === 'after-warning') {
-    sec1Inner = warning + sec1body + button
+    sec1Inner = warning + sec1body + buttonGroup
   } else {
     sec1Inner = warning + sec1body
   }
@@ -165,7 +170,7 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
       ${sec1Inner}
     </div>
 
-    ${cfg.buttonPosition === 'after-sec1' ? `<div style="margin:8px 0 16px;">${button}</div>` : ''}
+    ${cfg.buttonPosition === 'after-sec1' ? `<div style="margin:8px 0 16px;">${buttonGroup}</div>` : ''}
 
     <!-- 貳 -->
     <div style="${sectionStyle}">

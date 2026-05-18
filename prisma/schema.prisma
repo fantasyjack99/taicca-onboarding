@@ -20,19 +20,18 @@ model OnboardingSession {
   contactEmail  String    @db.VarChar(255)
 
   // Employee-filled fields (null until submitted)
-  taiccaEmail   String?   @db.VarChar(255)  // firstname.lastname (不含 @taicca.tw)
-  englishFirst  String?   @db.VarChar(50)   // 英文名 (first name)
-  englishLast   String?   @db.VarChar(50)   // 英文姓 (last name)
-  englishName   String?   @db.VarChar(100)  // 名片全名（可自訂）
+  taiccaEmail   String?   @db.VarChar(255)
+  englishFirst  String?   @db.VarChar(50)
+  englishLast   String?   @db.VarChar(50)
+  englishName   String?   @db.VarChar(100)
   showPhone     Boolean?
-  phoneNumber   String?   @db.VarChar(30)   // 手機號碼（showPhone=true 時填寫）
+  phoneNumber   String?   @db.VarChar(30)
   photoPath     String?   @db.VarChar(500)
 
   // HR confirmation
   employeeId    String?   @db.VarChar(20)
   ragicSyncedAt DateTime?
 
-  // Ragic employee cache (fetched once on page load, used for local uniqueness check)
   ragicCache    Json?
 
   // Timestamps
@@ -41,12 +40,67 @@ model OnboardingSession {
   submittedAt   DateTime?
   confirmedAt   DateTime?
 
+  employeeForm  EmployeeFormData?
+
   @@index([status])
   @@index([taiccaEmail])
   @@index([englishName])
 }
 
-// Department list cached from metalpig.synology.me:3300
+// 員工基本資料 + 薪資扣繳選擇表 電子表單資料
+model EmployeeFormData {
+  id                String    @id @default(uuid())
+  sessionId         String    @unique
+  session           OnboardingSession @relation(fields: [sessionId], references: [id])
+
+  // ── 基本資料 ──
+  birthDate         String?             // 民國年格式 "113/01/01"
+  idNumber          String?   @db.VarChar(20)
+  birthplace        String?   @db.VarChar(50)
+  nationality       String?   @db.VarChar(30)
+  bloodType         String?   @db.VarChar(5)
+  gender            String?   @db.VarChar(5)
+  maritalStatus     String?   @db.VarChar(10)
+  childrenCount     String?   @db.VarChar(10)   // 舊欄位，保留相容性
+  sonsCount         String?   @db.VarChar(10)   // 兒子數
+  daughtersCount    String?   @db.VarChar(10)   // 女兒數
+  homePhone         String?   @db.VarChar(30)
+  mobilePhone       String?   @db.VarChar(30)
+  personalEmail     String?   @db.VarChar(255)
+  permanentAddress  String?   @db.VarChar(200)
+  currentAddress    String?   @db.VarChar(200)
+  sameAddress       Boolean   @default(false)
+
+  // ── 動態陣列欄位（JSON）──
+  education         Json?   // [{from,to,school,dept,dayNight,years,graduated,note}]
+  workHistory       Json?   // [{from,to,company,position,salary,reason}]
+  languageSkills    Json?   // [{lang,listen,speak,read,write}] 1-5分
+  familyMembers     Json?   // [{relation,name,birthDate,occupation,address}]
+  nhiDependents     Json?   // [{name,idNumber,birthDate,relation}] 最多3人
+
+  // ── 緊急聯絡人 ──
+  emergencyName     String?   @db.VarChar(50)
+  emergencyRelation String?   @db.VarChar(20)
+  emergencyPhone    String?   @db.VarChar(30)
+
+  // ── 勞工退休金 ──
+  laborPensionSelf  Boolean?
+  laborPensionRate  String?   @db.VarChar(5)
+
+  // ── 扣繳選擇 ──
+  withholdingMethod String?   @db.VarChar(5)  // "1" | "2"
+
+  // ── 免稅人口（JSON）──
+  taxDependents     Json?   // [{type,name,relation,birthDate,idNumber,address,condition}]
+
+  // ── 個資同意 ──
+  consentAgreed     Boolean   @default(false)
+
+  submittedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
 model DepartmentCache {
   id        Int      @id @default(autoincrement())
   name      String   @db.VarChar(100)
@@ -54,7 +108,6 @@ model DepartmentCache {
   updatedAt DateTime @updatedAt
 }
 
-// 系統設定（token 等，可從後台更新，無需重新部署）
 model SystemConfig {
   key       String   @id
   value     String   @db.Text

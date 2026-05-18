@@ -60,6 +60,7 @@ export async function PUT(req: NextRequest) {
     startDate: '2026年6月1日',
     deadlineStr: '2026年5月25日',
     onboardingUrl: '#',
+    formsUrl: '#',
     baseUrl: '',
   })
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })

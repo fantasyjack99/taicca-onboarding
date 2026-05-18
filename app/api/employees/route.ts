@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
 
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
   const onboardingUrl = `${baseUrl}/onboarding/${token}`
+  const formsUrl = `${baseUrl}/onboarding/${token}/forms`
 
   try {
     await sendOnboardingEmail({
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
       startDate: start,
       contactEmail,
       onboardingUrl,
+      formsUrl,
     })
   } catch (err) {
     // Email failure is non-fatal — record is created, HR can resend manually

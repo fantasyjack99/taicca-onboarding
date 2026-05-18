@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { sendHRNotification, sendSlackNotification } from '@/lib/notify'
 
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
   const { token } = params
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   const taiccaEmail = `${first.toLowerCase()}.${last.toLowerCase()}`
   const cardName = englishName?.trim() || `${first} ${last}`
 
-  await prisma.onboardingSession.update({
+  const updated = await prisma.onboardingSession.update({
     where: { token },
     data: {
       taiccaEmail,
@@ -43,6 +44,32 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       status: 'SUBMITTED',
       submittedAt: new Date(),
     },
+  })
+
+  // 非同步通知 HR（不阻塞回應）
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3001'
+  const adminReviewUrl = `${baseUrl}/admin/${session.id}`
+  const notifyPayload = {
+    name: session.name,
+    department: session.department,
+    division: session.division,
+    title: session.title,
+    startDate: session.startDate,
+    taiccaEmail: updated.taiccaEmail,
+    englishName: updated.englishName,
+    adminReviewUrl,
+  }
+
+  // 平行發送，任一失敗不影響主流程
+  Promise.allSettled([
+    sendHRNotification(notifyPayload),
+    sendSlackNotification(notifyPayload),
+  ]).then(results => {
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.error(`Notification ${i === 0 ? 'email' : 'slack'} failed:`, r.reason)
+      }
+    })
   })
 
   return NextResponse.json({ success: true })

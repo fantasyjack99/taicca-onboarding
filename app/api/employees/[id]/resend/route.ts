@@ -25,6 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3001'
   const onboardingUrl = `${baseUrl}/onboarding/${record.token}`
+  const formsUrl = `${baseUrl}/onboarding/${record.token}/forms`
 
   try {
     await sendOnboardingEmail({
@@ -35,6 +36,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       startDate: record.startDate,
       contactEmail: targetEmail,
       onboardingUrl,
+      formsUrl,
+      isUpdate: true,
     })
     return NextResponse.json({ success: true, sentTo: targetEmail })
   } catch (err) {

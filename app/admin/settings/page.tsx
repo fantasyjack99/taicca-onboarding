@@ -6,6 +6,8 @@ interface ConfigState {
   ragic_api_key_updated_at?: string
   ragic_api_key?: string
   ragic_api_url?: string
+  slack_webhook_set?: string
+  slack_updated_at?: string
 }
 
 type TestResult = { ok: boolean; message?: string; error?: string } | null
@@ -402,6 +404,133 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Slack 通知 ── */}
+      <SlackSection
+        isSet={config.slack_webhook_set === 'true'}
+        updatedAt={config.slack_updated_at}
+      />
     </div>
+  )
+}
+
+// ─── Slack 設定區塊 ────────────────────────────────────
+function SlackSection({ isSet, updatedAt }: { isSet: boolean; updatedAt?: string }) {
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveResult, setSaveResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message?: string; error?: string } | null>(null)
+  const [showSteps, setShowSteps] = useState(false)
+
+  async function handleSave() {
+    if (!webhookUrl.trim() || saving) return
+    setSaving(true)
+    setSaveResult(null)
+    try {
+      const res = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slack_webhook_url: webhookUrl.trim() }),
+      })
+      if (!res.ok) throw new Error('儲存失敗')
+      setSaveResult({ ok: true, msg: 'Webhook URL 已儲存' })
+      setWebhookUrl('')
+      window.location.reload()
+    } catch (err: unknown) {
+      setSaveResult({ ok: false, msg: err instanceof Error ? err.message : '儲存失敗' })
+    } finally { setSaving(false) }
+  }
+
+  async function handleTest() {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/admin/config/test-slack', { method: 'POST' })
+      setTestResult(await res.json())
+    } catch { setTestResult({ ok: false, error: '測試失敗' }) }
+    finally { setTesting(false) }
+  }
+
+  const inputBase = {
+    padding: '9px 13px', background: '#fff', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: '13px',
+    fontFamily: 'monospace', flex: 1,
+  } as const
+
+  return (
+    <section style={cardStyle}>
+      <div style={{ ...cardHeaderStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontWeight: '600', fontSize: '15px' }}>Slack 通知</div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            新人填寫完報到資料後，自動推播通知（建立私人頻道只加自己，效果等同 DM）
+          </div>
+        </div>
+        <span style={{
+          background: testResult?.ok === false ? 'rgba(200,54,43,0.1)' : isSet ? 'rgba(45,138,78,0.1)' : 'rgba(176,125,0,0.1)',
+          color: testResult?.ok === false ? 'var(--danger)' : isSet ? 'var(--success)' : 'var(--warning)',
+          padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600',
+        }}>
+          {testResult?.ok === false ? '⚠ 連線失敗' : isSet ? '● 已設定' : '○ 未設定'}
+        </span>
+      </div>
+
+      <div style={cardBodyStyle}>
+        <div style={{ marginBottom: '20px' }}>
+          <button
+            onClick={() => setShowSteps(!showSteps)}
+            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '7px 14px', fontSize: '13px', cursor: 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            {showSteps ? '▲' : '▼'} 如何取得 Slack Webhook URL
+          </button>
+          {showSteps && (
+            <div style={{ marginTop: '12px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', fontSize: '13px', lineHeight: 1.8 }}>
+              <ol style={{ margin: 0, paddingLeft: '20px', color: 'var(--text-secondary)' }}>
+                <li>在 Slack 建立一個<strong>私人頻道</strong>（例：<code style={{ background: '#eee', padding: '1px 5px', borderRadius: '3px' }}>#taicca-報到通知</code>），只加入你自己</li>
+                <li>前往 <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>https://api.slack.com/apps</a> → <strong>Create New App</strong> → <strong>From scratch</strong></li>
+                <li>輸入名稱（例：<code style={{ background: '#eee', padding: '1px 5px', borderRadius: '3px' }}>TAICCA 報到通知</code>），選擇 Workspace → <strong>Create App</strong></li>
+                <li>左側 <strong>Incoming Webhooks</strong> → 開啟 <strong>Activate Incoming Webhooks</strong></li>
+                <li>點 <strong>Add New Webhook to Workspace</strong> → 選擇剛建的私人頻道 → Allow</li>
+                <li>複製 Webhook URL（<code style={{ background: '#eee', padding: '1px 5px', borderRadius: '3px' }}>https://hooks.slack.com/services/...</code>）貼入下方</li>
+              </ol>
+            </div>
+          )}
+        </div>
+
+        {isSet && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+              ● Webhook URL 已設定{updatedAt && ` — 最後更新：${new Date(updatedAt).toLocaleString('zh-TW')}`}
+            </div>
+            <button onClick={handleTest} disabled={testing} style={{ padding: '8px 16px', background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: '13px', cursor: testing ? 'wait' : 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+              {testing ? '傳送中...' : '傳送測試訊息'}
+            </button>
+            {testResult && (
+              <div style={{ marginTop: '10px', padding: '8px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', background: testResult.ok ? 'var(--success-bg)' : 'var(--danger-bg)', color: testResult.ok ? 'var(--success)' : 'var(--danger)', borderLeft: `3px solid ${testResult.ok ? 'var(--success)' : 'var(--danger)'}` }}>
+                {testResult.ok ? `✓ ${testResult.message}` : `✕ ${testResult.error}`}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div>
+          <label style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+            {isSet ? '更換 Webhook URL' : '設定 Webhook URL'}
+          </label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input type="text" style={inputBase} value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://hooks.slack.com/services/..." />
+            <button onClick={handleSave} disabled={!webhookUrl.trim() || saving} style={{ padding: '9px 20px', background: webhookUrl.trim() && !saving ? 'var(--accent)' : '#e5e5e5', color: webhookUrl.trim() && !saving ? '#fff' : '#999', border: 'none', borderRadius: 'var(--radius-md)', fontSize: '14px', fontWeight: '600', cursor: webhookUrl.trim() && !saving ? 'pointer' : 'not-allowed', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              {saving ? '儲存中...' : '儲存'}
+            </button>
+          </div>
+          {saveResult && (
+            <div style={{ marginTop: '8px', padding: '7px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', background: saveResult.ok ? 'var(--success-bg)' : 'var(--danger-bg)', color: saveResult.ok ? 'var(--success)' : 'var(--danger)', borderLeft: `3px solid ${saveResult.ok ? 'var(--success)' : 'var(--danger)'}` }}>
+              {saveResult.ok ? `✓ ${saveResult.msg}` : `✕ ${saveResult.msg}`}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   )
 }

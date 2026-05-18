@@ -30,6 +30,8 @@ interface OnboardingEmailData {
   startDate: Date
   contactEmail: string
   onboardingUrl: string
+  formsUrl?: string
+  isUpdate?: boolean
 }
 
 export async function sendOnboardingEmail(data: OnboardingEmailData): Promise<void> {
@@ -47,6 +49,7 @@ export async function sendOnboardingEmail(data: OnboardingEmailData): Promise<vo
     startDate: formatDate(data.startDate),
     deadlineStr: formatDate(deadline),
     onboardingUrl: data.onboardingUrl,
+    formsUrl: data.formsUrl || '',
     baseUrl,
   })
 
@@ -63,7 +66,9 @@ export async function sendOnboardingEmail(data: OnboardingEmailData): Promise<vo
   await transporter.sendMail({
     from: process.env.SMTP_FROM,
     to: data.contactEmail,
-    subject: '[TAICCA] 文化內容策進院新人報到注意事項',
+    subject: data.isUpdate
+      ? '[TAICCA] 文化內容策進院新人報到注意事項（更新）'
+      : '[TAICCA] 文化內容策進院新人報到注意事項',
     html,
     attachments,
   })

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
-const CONFIG_KEYS = ['ragic_api_key', 'ragic_api_url'] as const
+const CONFIG_KEYS = ['ragic_api_key', 'ragic_api_url', 'slack_webhook_url'] as const
 
 export async function GET() {
   const session = await auth()
@@ -14,22 +14,24 @@ export async function GET() {
 
   const result: Record<string, string> = {}
   for (const c of configs) {
-    // 遮罩 token：只顯示最後 8 碼
     if (c.key === 'ragic_api_key') {
-      result[c.key] = c.value.length > 8
-        ? '••••••••' + c.value.slice(-8)
-        : '••••••••'
+      result[c.key] = c.value.length > 8 ? '••••••••' + c.value.slice(-8) : '••••••••'
       result['ragic_api_key_set'] = 'true'
       result['ragic_api_key_updated_at'] = c.updatedAt.toISOString()
+    } else if (c.key === 'slack_webhook_url') {
+      result['slack_webhook_set'] = c.value ? 'true' : 'false'
+      result['slack_updated_at'] = c.updatedAt.toISOString()
     } else {
       result[c.key] = c.value
     }
   }
 
-  // 如果 DB 沒有，回傳 env 的狀態
   if (!result['ragic_api_key_set']) {
     const envKey = process.env.RAGIC_API_KEY
     result['ragic_api_key_set'] = envKey ? 'env' : 'false'
+  }
+  if (!result['slack_webhook_set']) {
+    result['slack_webhook_set'] = 'false'
   }
 
   return NextResponse.json(result)
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { ragic_api_key, ragic_api_url } = body
+  const { ragic_api_key, ragic_api_url, slack_webhook_url } = body
 
   const updates: Promise<unknown>[] = []
 
@@ -62,6 +64,15 @@ export async function POST(req: NextRequest) {
         update: { value: ragic_api_url.trim() },
       })
     )
+  }
+
+  if (slack_webhook_url !== undefined) {
+    const val = slack_webhook_url.trim()
+    updates.push(prisma.systemConfig.upsert({
+      where: { key: 'slack_webhook_url' },
+      create: { key: 'slack_webhook_url', value: val },
+      update: { value: val },
+    }))
   }
 
   if (updates.length === 0) {
