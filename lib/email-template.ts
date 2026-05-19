@@ -69,7 +69,7 @@ export const DEFAULT_TEMPLATE: EmailTemplateConfig = {
 
   sec2Heading: '貳、員工基本資料卡及其他',
   sec2Body: '檢附本院【員工基本資料卡】、【薪資扣繳選擇表及個資同意書】，<strong>請先填寫並貼上照片，於報到前五個工作天回傳</strong>，於報到當日簽章即可。',
-  showSec2Attachments: true,
+  showSec2Attachments: false,
 
   sec3Heading: '參、薪轉戶',
   sec3Body: '本院薪轉銀行為<strong>國泰世華銀行</strong>，請於報到時一併繳交該銀行存摺封面影本（電子存摺或實體存摺皆可），作為薪轉使用。',
@@ -118,16 +118,15 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
   const attachStyle = `display:inline-block;border:1px solid ${cfg.buttonBg};color:${cfg.buttonBg};padding:7px 16px;text-decoration:none;font-size:13px;border-radius:3px;margin:4px 4px 0 0;`
 
   const button = `<a href="${data.onboardingUrl}" style="${btnStyle}">${cfg.buttonLabel}</a>`
-  const formsButton = data.formsUrl
-    ? `<a href="${data.formsUrl}" style="${btnStyle}background:#555555;">→ 填寫員工基本資料表單</a>`
-    : ''
-  const buttonGroup = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 10px;">${button}${formsButton}</div>`
+  // 壹段只保留主按鈕，填寫員工基本資料表單移至貳段
+  const buttonGroup = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 10px;">${button}</div>`
 
-  const attachLinks = cfg.showSec2Attachments ? `
-    <div style="margin-top:12px;">
-      <a href="${data.baseUrl}/attachments/%E5%93%A1%E5%B7%A5%E5%9F%BA%E6%9C%AC%E8%B3%87%E6%96%99%E5%8D%A1.docx" style="${attachStyle}">↓ 員工基本資料卡.docx</a>
-      <a href="${data.baseUrl}/attachments/%E5%93%A1%E5%B7%A5%E8%96%AA%E8%B3%87%E6%89%A3%E7%B9%B3%E5%8F%8A%E5%80%8B%E8%B3%87%E5%90%8C%E6%84%8F%E6%9B%B8.docx" style="${attachStyle}">↓ 薪資扣繳及個資同意書.docx</a>
-    </div>` : ''
+  // 貳段：填寫員工基本資料表單按鈕（取代原有 Word 下載連結）
+  const formsButton = data.formsUrl
+    ? `<div style="margin-top:12px;"><a href="${data.formsUrl}" style="${btnStyle}background:#555555;">→ 填寫員工基本資料表單</a></div>`
+    : ''
+
+  const attachLinks = '' // Word 下載連結已移除
 
   // 壹 section 按鈕位置
   const warning = `<div style="${deadlineStyle}">${sub(cfg.sec1Warning, c)}</div>`
@@ -176,7 +175,7 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
     <div style="${sectionStyle}">
       <h2 style="${h2Style}">${sub(cfg.sec2Heading, c)}</h2>
       <p style="${pStyle}">${sub(cfg.sec2Body, c)}</p>
-      ${attachLinks}
+      ${formsButton}
     </div>
 
     <!-- 參 -->
