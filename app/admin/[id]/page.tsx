@@ -70,6 +70,15 @@ interface EditForm {
   contactEmail: string
 }
 
+interface EditForm2 {
+  taiccaEmail: string    // without @taicca.tw
+  englishFirst: string
+  englishLast: string
+  englishName: string
+  showPhone: boolean | null
+  phoneNumber: string
+}
+
 export default function AdminReviewPage({ params }: { params: { id: string } }) {
   const { id } = params
   const router = useRouter()
@@ -91,12 +100,14 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
   const [departments, setDepartments] = useState<{ name: string; divisions: string[] }[]>([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [saveResult, setSaveResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
-  // Ragic 重新同步
-  const [resyncing, setResyncing] = useState(false)
-  const [resyncError, setResyncError] = useState('')
-  const [resyncSuccess, setResyncSuccess] = useState(false)
-  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
+  // 新人填寫欄位編輯
+  const [editing2, setEditing2] = useState(false)
+  const [editForm2, setEditForm2] = useState<EditForm2 | null>(null)
+  const [saving2, setSaving2] = useState(false)
+  const [saveError2, setSaveError2] = useState('')
+  const [saveResult2, setSaveResult2] = useState<{ ok: boolean; msg: string } | null>(null)
 
   useEffect(() => {
     fetch(`/api/employees/${id}`)
@@ -104,7 +115,6 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
       .then((data) => {
         setRecord(data)
         setResendEmail(data.contactEmail || '')
-        setLastSyncedAt(data.ragicSyncedAt || null)
       })
   }, [id])
 
@@ -125,7 +135,6 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
         throw new Error(d.error || '同步失敗')
       }
       setSyncSuccess(true)
-      setLastSyncedAt(new Date().toISOString())
       setTimeout(() => router.push('/admin'), 1500)
     } catch (err: unknown) {
       setSyncError(err instanceof Error ? err.message : '同步失敗，請手動確認 Ragic')
@@ -176,19 +185,25 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
     if (!editForm || saving) return
     setSaving(true)
     setSaveError('')
+    setSaveResult(null)
     try {
       const res = await fetch(`/api/employees/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       })
-      if (!res.ok) {
-        const d = await res.json()
-        throw new Error(d.error || '儲存失敗')
-      }
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || '儲存失敗')
       setRecord((prev) => prev ? { ...prev, ...editForm } : prev)
       setResendEmail(editForm.contactEmail)
       setEditing(false)
+      if (result.ragicSynced) {
+        setSaveResult({ ok: true, msg: '已儲存並同步至 Ragic' })
+      } else if (result.ragicError) {
+        setSaveResult({ ok: false, msg: `已儲存，但 Ragic 同步失敗：${result.ragicError}` })
+      } else {
+        setSaveResult({ ok: true, msg: '已儲存' })
+      }
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : '儲存失敗')
     } finally {
@@ -196,25 +211,55 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
     }
   }
 
-  async function handleResync() {
-    if (resyncing) return
-    setResyncing(true)
-    setResyncError('')
-    setResyncSuccess(false)
+  function handleStartEdit2() {
+    if (!record) return
+    setEditForm2({
+      taiccaEmail: record.taiccaEmail || '',
+      englishFirst: record.englishFirst || '',
+      englishLast: record.englishLast || '',
+      englishName: record.englishName || '',
+      showPhone: record.showPhone,
+      phoneNumber: record.phoneNumber || '',
+    })
+    setEditing2(true)
+    setSaveError2('')
+    setSaveResult2(null)
+  }
+
+  async function handleSave2() {
+    if (!editForm2 || saving2) return
+    setSaving2(true)
+    setSaveError2('')
+    setSaveResult2(null)
     try {
-      const res = await fetch('/api/ragic/resync', {
-        method: 'POST',
+      const res = await fetch(`/api/employees/${id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify(editForm2),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || '重新同步失敗')
-      setResyncSuccess(true)
-      setLastSyncedAt(data.ragicSyncedAt)
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || '儲存失敗')
+      setRecord((prev) => prev ? {
+        ...prev,
+        taiccaEmail: editForm2.taiccaEmail || null,
+        englishFirst: editForm2.englishFirst || null,
+        englishLast: editForm2.englishLast || null,
+        englishName: editForm2.englishName || null,
+        showPhone: editForm2.showPhone,
+        phoneNumber: editForm2.phoneNumber || null,
+      } : prev)
+      setEditing2(false)
+      if (result.ragicSynced) {
+        setSaveResult2({ ok: true, msg: '已儲存並同步至 Ragic' })
+      } else if (result.ragicError) {
+        setSaveResult2({ ok: false, msg: `已儲存，但 Ragic 同步失敗：${result.ragicError}` })
+      } else {
+        setSaveResult2({ ok: true, msg: '已儲存' })
+      }
     } catch (err: unknown) {
-      setResyncError(err instanceof Error ? err.message : '重新同步失敗')
+      setSaveError2(err instanceof Error ? err.message : '儲存失敗')
     } finally {
-      setResyncing(false)
+      setSaving2(false)
     }
   }
 
@@ -339,6 +384,19 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
         )}
       </section>
 
+      {/* 儲存結果提示 */}
+      {saveResult && (
+        <div style={{
+          marginBottom: '20px', padding: '10px 16px', borderRadius: 'var(--radius-sm)',
+          fontSize: '13px',
+          background: saveResult.ok ? 'var(--success-bg)' : 'var(--danger-bg)',
+          color: saveResult.ok ? 'var(--success)' : 'var(--danger)',
+          borderLeft: `3px solid ${saveResult.ok ? 'var(--success)' : 'var(--danger)'}`,
+        }}>
+          {saveResult.ok ? '✓ ' : '⚠ '}{saveResult.msg}
+        </div>
+      )}
+
       {/* 重新發送通知信 */}
       {record.status !== 'CONFIRMED' && (
         <section style={{
@@ -399,40 +457,138 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
 
       {/* 新人填寫 */}
       <section style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '13px', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: '8px', textTransform: 'uppercase' }}>
-          新人填寫
-        </h2>
-        <Row label="taicca 信箱" value={record.taiccaEmail ? `${record.taiccaEmail}@taicca.tw` : null} />
-        <Row
-          label="英文姓名"
-          value={record.englishFirst && record.englishLast
-            ? `${record.englishFirst} ${record.englishLast}（名片：${record.englishName || `${record.englishFirst} ${record.englishLast}`}）`
-            : record.englishName}
-        />
-        <Row
-          label="名片顯示手機"
-          value={record.showPhone === null ? null : record.showPhone ? `是${record.phoneNumber ? `　${record.phoneNumber}` : ''}` : '否'}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <h2 style={{ fontSize: '13px', color: 'var(--text-muted)', letterSpacing: '0.05em', margin: 0, textTransform: 'uppercase' }}>
+            新人填寫
+          </h2>
+          {!editing2 && (
+            <button
+              onClick={handleStartEdit2}
+              style={{
+                background: 'none', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)',
+                fontSize: '12px', padding: '4px 12px', cursor: 'pointer',
+                fontFamily: 'inherit', transition: 'all 150ms',
+              }}
+            >
+              ✏ 編輯
+            </button>
+          )}
+        </div>
+
+        {!editing2 ? (
+          <>
+            <Row label="taicca 信箱" value={record.taiccaEmail ? `${record.taiccaEmail}@taicca.tw` : null} />
+            <Row
+              label="英文姓名"
+              value={record.englishFirst && record.englishLast
+                ? `${record.englishFirst} ${record.englishLast}（名片：${record.englishName || `${record.englishFirst} ${record.englishLast}`}）`
+                : record.englishName}
+            />
+            <Row
+              label="名片顯示手機"
+              value={record.showPhone === null ? null : record.showPhone ? `是${record.phoneNumber ? `　${record.phoneNumber}` : ''}` : '否'}
+            />
+          </>
+        ) : (
+          <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px 20px' }}>
+            {editForm2 && (
+              <>
+                <EditRow label="taicca 信箱">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <input type="text" style={inputStyle} value={editForm2.taiccaEmail}
+                      onChange={(e) => setEditForm2({ ...editForm2, taiccaEmail: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') })}
+                      placeholder="mars.chen" />
+                    <span style={{ fontSize: '13px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>@taicca.tw</span>
+                  </div>
+                </EditRow>
+                <EditRow label="英文名">
+                  <input type="text" style={inputStyle} value={editForm2.englishFirst}
+                    onChange={(e) => setEditForm2({ ...editForm2, englishFirst: e.target.value })}
+                    placeholder="Mars" />
+                </EditRow>
+                <EditRow label="英文姓氏">
+                  <input type="text" style={inputStyle} value={editForm2.englishLast}
+                    onChange={(e) => setEditForm2({ ...editForm2, englishLast: e.target.value })}
+                    placeholder="CHEN" />
+                </EditRow>
+                <EditRow label="名片英文姓名">
+                  <input type="text" style={inputStyle} value={editForm2.englishName}
+                    onChange={(e) => setEditForm2({ ...editForm2, englishName: e.target.value })}
+                    placeholder="Mars CHEN" />
+                </EditRow>
+                <EditRow label="名片顯示手機">
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {([true, false] as const).map((val) => (
+                      <label key={String(val)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', cursor: 'pointer' }}>
+                        <input type="radio" name="editShowPhone" checked={editForm2.showPhone === val}
+                          onChange={() => setEditForm2({ ...editForm2, showPhone: val, phoneNumber: val ? editForm2.phoneNumber : '' })} />
+                        {val ? '是，顯示' : '否，不顯示'}
+                      </label>
+                    ))}
+                  </div>
+                </EditRow>
+                {editForm2.showPhone === true && (
+                  <EditRow label="手機號碼">
+                    <input type="tel" style={inputStyle} value={editForm2.phoneNumber}
+                      onChange={(e) => setEditForm2({ ...editForm2, phoneNumber: e.target.value })}
+                      placeholder="0912-345-678" />
+                  </EditRow>
+                )}
+
+                {saveError2 && (
+                  <div style={{ marginTop: '12px', padding: '8px 12px', background: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', fontSize: '13px', borderLeft: '3px solid var(--danger)' }}>
+                    ⚠ {saveError2}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                  <button onClick={handleSave2} disabled={saving2} style={{
+                    padding: '9px 24px', background: saving2 ? '#e5e5e5' : 'var(--accent)',
+                    color: saving2 ? '#999' : '#fff', border: 'none',
+                    borderRadius: 'var(--radius-md)', fontSize: '14px', fontWeight: '600',
+                    cursor: saving2 ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                  }}>
+                    {saving2 ? '儲存中...' : '儲存'}
+                  </button>
+                  <button onClick={() => { setEditing2(false); setSaveError2('') }} style={{
+                    padding: '9px 20px', background: 'none',
+                    border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+                    fontSize: '14px', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                    取消
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {saveResult2 && (
+          <div style={{
+            marginTop: '10px', padding: '8px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px',
+            background: saveResult2.ok ? 'var(--success-bg)' : 'var(--danger-bg)',
+            color: saveResult2.ok ? 'var(--success)' : 'var(--danger)',
+            borderLeft: `3px solid ${saveResult2.ok ? 'var(--success)' : 'var(--danger)'}`,
+          }}>
+            {saveResult2.ok ? '✓ ' : '⚠ '}{saveResult2.msg}
+          </div>
+        )}
+
+        {/* 照片（唯讀，不可編輯） */}
         <Row
           label="照片"
           value={record.photoPath ? (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <img
-                src={record.photoPath}
-                alt="員工照片"
-                style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }}
-              />
-              <a
-                href={`${record.photoPath}?download=true`}
-                download
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  padding: '6px 14px', background: '#fff', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)',
-                  textDecoration: 'none', fontSize: '13px', cursor: 'pointer',
-                  whiteSpace: 'nowrap', alignSelf: 'center',
-                }}
-              >
+              <img src={record.photoPath} alt="員工照片"
+                style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--border)' }} />
+              <a href={`${record.photoPath}?download=true`} download style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                padding: '6px 14px', background: '#fff', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)',
+                textDecoration: 'none', fontSize: '13px', cursor: 'pointer',
+                whiteSpace: 'nowrap', alignSelf: 'center',
+              }}>
                 ↓ 下載原檔
               </a>
             </div>
@@ -505,13 +661,13 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
         }}>
           <h2 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px' }}>確認建檔</h2>
           <label style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-            員工編號（英文+數字，例：U001）
+            請輸入員工編號
           </label>
           <input
             type="text"
             value={employeeId}
             onChange={(e) => setEmployeeId(e.target.value.toUpperCase())}
-            placeholder="U001"
+            placeholder=""
             style={{
               ...inputStyle,
               flex: 'none',
@@ -576,58 +732,6 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
         </div>
       )}
 
-      {/* Ragic 重新同步（已建檔才顯示） */}
-      {lastSyncedAt && (
-        <section style={{
-          background: '#fff',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '20px',
-          marginBottom: '28px',
-        }}>
-          <h2 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>Ragic 資料同步</h2>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-            上次同步：{new Date(lastSyncedAt).toLocaleString('zh-TW')}
-            <br />
-            若剛更新了姓名、處室、職稱等欄位，請手動重新同步至 Ragic。
-          </p>
-
-          {resyncSuccess && (
-            <div style={{
-              padding: '8px 12px', background: 'var(--success-bg)', color: 'var(--success)',
-              borderRadius: 'var(--radius-sm)', fontSize: '13px', borderLeft: '3px solid var(--success)',
-              marginBottom: '12px',
-            }}>
-              ✓ 已重新同步（{new Date(lastSyncedAt).toLocaleString('zh-TW')}）
-            </div>
-          )}
-
-          {resyncError && (
-            <div style={{
-              padding: '8px 12px', background: 'var(--danger-bg)', color: 'var(--danger)',
-              borderRadius: 'var(--radius-sm)', fontSize: '13px', borderLeft: '3px solid var(--danger)',
-              marginBottom: '12px',
-            }}>
-              ⚠ {resyncError}
-            </div>
-          )}
-
-          <button
-            onClick={handleResync}
-            disabled={resyncing}
-            style={{
-              padding: '9px 24px',
-              background: resyncing ? '#e5e5e5' : 'var(--accent)',
-              color: resyncing ? '#999' : '#fff',
-              border: 'none', borderRadius: 'var(--radius-md)',
-              fontSize: '14px', fontWeight: '600',
-              cursor: resyncing ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            {resyncing ? '同步中...' : '重新同步至 Ragic'}
-          </button>
-        </section>
-      )}
     </div>
   )
 }
