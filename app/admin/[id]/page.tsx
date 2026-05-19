@@ -88,6 +88,10 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
   const [syncError, setSyncError] = useState('')
   const [syncTokenExpired, setSyncTokenExpired] = useState(false)
   const [syncSuccess, setSyncSuccess] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const [dupConfirm, setDupConfirm] = useState<{
+    name: string; department: string; division: string; title: string
+  } | null>(null)
 
   // 重新發送
   const [resendEmail, setResendEmail] = useState('')
@@ -118,11 +122,32 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
       })
   }, [id])
 
-  async function handleConfirm() {
-    if (!employeeId.trim() || syncing) return
+  async function handleConfirm(force = false) {
+    if (!employeeId.trim() || syncing || checking) return
+
+    // 若尚未強制確認，先查 Ragic 是否有重複
+    if (!force) {
+      setChecking(true)
+      setSyncError('')
+      try {
+        const chk = await fetch(`/api/ragic/check?employeeId=${encodeURIComponent(employeeId.trim())}`)
+        const data = await chk.json()
+        if (data.exists) {
+          setDupConfirm(data.employee)
+          setChecking(false)
+          return // 等待使用者確認
+        }
+      } catch {
+        // 查詢失敗不阻斷流程，直接繼續
+      }
+      setChecking(false)
+    }
+
+    // 執行同步
     setSyncing(true)
     setSyncError('')
     setSyncTokenExpired(false)
+    setDupConfirm(null)
     try {
       const res = await fetch('/api/ragic/sync', {
         method: 'POST',
@@ -697,24 +722,75 @@ export default function AdminReviewPage({ params }: { params: { id: string } }) 
               )}
             </div>
           )}
-          <button
-            onClick={handleConfirm}
-            disabled={!employeeId.trim() || syncing}
-            style={{
-              padding: '11px 32px',
-              background: employeeId.trim() && !syncing ? 'var(--accent)' : '#e5e5e5',
-              color: employeeId.trim() && !syncing ? '#fff' : '#999',
-              border: 'none',
+          {/* 重複員工編號警示 */}
+          {dupConfirm && (
+            <div style={{
+              background: '#fffbeb',
+              border: '1px solid #d97706',
               borderRadius: 'var(--radius-md)',
-              fontWeight: '600',
-              cursor: employeeId.trim() && !syncing ? 'pointer' : 'not-allowed',
-              fontSize: '14px',
-              fontFamily: 'inherit',
-              display: 'block',
-            }}
-          >
-            {syncing ? '同步中...' : '確認建檔並同步至 Ragic'}
-          </button>
+              padding: '14px 16px',
+              marginBottom: '14px',
+            }}>
+              <p style={{ margin: '0 0 8px', fontWeight: '600', color: '#92400e', fontSize: '14px' }}>
+                ⚠ 員工編號「{employeeId.trim()}」在 Ragic 中已存在
+              </p>
+              <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#78350f' }}>
+                現有記錄：{dupConfirm.name}
+                {dupConfirm.department && `｜${dupConfirm.department}`}
+                {dupConfirm.division && ` ${dupConfirm.division}`}
+                {dupConfirm.title && `｜${dupConfirm.title}`}
+              </p>
+              <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#92400e' }}>
+                繼續操作將會以新人資料覆蓋該筆記錄，確定要繼續嗎？
+              </p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => handleConfirm(true)}
+                  disabled={syncing}
+                  style={{
+                    padding: '7px 18px', background: '#d97706', color: '#fff',
+                    border: 'none', borderRadius: 'var(--radius-md)',
+                    fontWeight: '600', cursor: syncing ? 'not-allowed' : 'pointer',
+                    fontSize: '13px', fontFamily: 'inherit',
+                  }}
+                >
+                  {syncing ? '同步中...' : '確認覆蓋並同步'}
+                </button>
+                <button
+                  onClick={() => setDupConfirm(null)}
+                  style={{
+                    padding: '7px 18px', background: 'transparent',
+                    color: '#92400e', border: '1px solid #d97706',
+                    borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                    fontSize: '13px', fontFamily: 'inherit',
+                  }}
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!dupConfirm && (
+            <button
+              onClick={() => handleConfirm(false)}
+              disabled={!employeeId.trim() || syncing || checking}
+              style={{
+                padding: '11px 32px',
+                background: employeeId.trim() && !syncing && !checking ? 'var(--accent)' : '#e5e5e5',
+                color: employeeId.trim() && !syncing && !checking ? '#fff' : '#999',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                fontWeight: '600',
+                cursor: employeeId.trim() && !syncing && !checking ? 'pointer' : 'not-allowed',
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                display: 'block',
+              }}
+            >
+              {checking ? '檢查中...' : syncing ? '同步中...' : '確認建檔並同步至 Ragic'}
+            </button>
+          )}
         </section>
       )}
 
