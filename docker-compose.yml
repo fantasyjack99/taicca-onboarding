@@ -1,6 +1,20 @@
 services:
+  migrate:
+    build:
+      context: .
+      target: migrator
+    pull_policy: build
+    environment:
+      - DATABASE_URL=postgresql://taicca:taicca_pass@db:5432/taicca_onboarding
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   app:
-    build: .
+    build:
+      context: .
+      target: runner
     pull_policy: build
     ports:
       - "3001:3000"
@@ -26,8 +40,8 @@ services:
     volumes:
       - uploads:/uploads
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   db:
