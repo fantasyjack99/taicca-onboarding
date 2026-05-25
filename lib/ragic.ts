@@ -82,6 +82,20 @@ export async function syncEmployee(data: {
 
   if (!apiKey) throw new RagicTokenError()
 
+  // 先查詢是否有既有記錄（有 → 更新；沒有 → 新建）
+  let ragicRowId: number | null = null
+  try {
+    const employees = await fetchEmployeeList()
+    const existing = employees.find(e => e.employeeId === data.employeeId)
+    if (existing?.ragicId) ragicRowId = existing.ragicId
+  } catch {
+    // 無法取得清單時忽略，直接嘗試新建
+  }
+
+  const targetUrl = ragicRowId
+    ? `${apiUrl}/${ragicRowId}?api`
+    : `${apiUrl}?api`
+
   const formatDate = (d: Date) =>
     `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
 
@@ -100,7 +114,7 @@ export async function syncEmployee(data: {
 
   const encoded = new URLSearchParams(body).toString()
 
-  const res = await fetch(`${apiUrl}?api`, {
+  const res = await fetch(targetUrl, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${apiKey}`,
@@ -114,6 +128,6 @@ export async function syncEmployee(data: {
 
   const result = await res.json()
   if (result.status !== 'SUCCESS') {
-    throw new Error(`Ragic 建檔失敗：${result.msg || '未知錯誤'}`)
+    throw new Error(`Ragic ${ragicRowId ? '更新' : '建檔'}失敗：${result.msg || '未知錯誤'}`)
   }
 }

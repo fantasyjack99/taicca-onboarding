@@ -32,6 +32,7 @@ interface OnboardingEmailData {
   onboardingUrl: string
   formsUrl?: string
   isUpdate?: boolean
+  cc?: string[]
 }
 
 export async function sendOnboardingEmail(data: OnboardingEmailData): Promise<void> {
@@ -66,6 +67,7 @@ export async function sendOnboardingEmail(data: OnboardingEmailData): Promise<vo
   await transporter.sendMail({
     from: process.env.SMTP_FROM,
     to: data.contactEmail,
+    cc: data.cc && data.cc.length > 0 ? data.cc.join(',') : undefined,
     subject: data.isUpdate
       ? '[TAICCA] 文化內容策進院新人報到注意事項（更新）'
       : '[TAICCA] 文化內容策進院新人報到注意事項',

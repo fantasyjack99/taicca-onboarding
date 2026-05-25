@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { generateToken, tokenExpiryDate } from '@/lib/token'
 import { sendOnboardingEmail } from '@/lib/email'
+import { getSupervisorEmails } from '@/lib/supervisors'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -36,6 +37,8 @@ export async function POST(req: NextRequest) {
   const onboardingUrl = `${baseUrl}/onboarding/${token}`
   const formsUrl = `${baseUrl}/onboarding/${token}/forms`
 
+  const ccEmails = await getSupervisorEmails(department, division)
+
   try {
     await sendOnboardingEmail({
       name,
@@ -46,6 +49,7 @@ export async function POST(req: NextRequest) {
       contactEmail,
       onboardingUrl,
       formsUrl,
+      cc: ccEmails.length > 0 ? ccEmails : undefined,
     })
   } catch (err) {
     // Email failure is non-fatal — record is created, HR can resend manually

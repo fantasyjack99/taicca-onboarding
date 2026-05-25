@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendOnboardingEmail } from '@/lib/email'
+import { getSupervisorEmails } from '@/lib/supervisors'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
@@ -27,6 +28,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const onboardingUrl = `${baseUrl}/onboarding/${record.token}`
   const formsUrl = `${baseUrl}/onboarding/${record.token}/forms`
 
+  // 新人尚未回填（PENDING）→ CC 處長 + 組長；已回填 → 不 CC
+  const ccEmails = record.submittedAt === null
+    ? await getSupervisorEmails(record.department, record.division)
+    : []
+
   try {
     await sendOnboardingEmail({
       name: record.name,
@@ -38,6 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       onboardingUrl,
       formsUrl,
       isUpdate: true,
+      cc: ccEmails.length > 0 ? ccEmails : undefined,
     })
     return NextResponse.json({ success: true, sentTo: targetEmail })
   } catch (err) {

@@ -30,7 +30,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <nav style={{ flex: 1, padding: '8px 0' }}>
           {[
             { href: '/admin', label: '報到管理' },
-            { href: '/admin/new', label: '新增新人' },
             { href: '/admin/email-template', label: '信件模板' },
             { href: '/admin/settings', label: '系統設定' },
           ].map(({ href, label }) => (
