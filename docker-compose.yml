@@ -2,10 +2,10 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - DATABASE_URL=postgresql://taicca:taicca_pass@db:5432/taicca_onboarding
-      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_URL=http://metalpig.synology.me:3001
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -16,9 +16,12 @@ services:
       - SMTP_PASS=${SMTP_PASS}
       - SMTP_FROM=${SMTP_FROM}
       - DEPARTMENTS_API_URL=http://host.docker.internal:3300
+      - DEPARTMENTS_API_KEY=${DEPARTMENTS_API_KEY}
       - RAGIC_API_URL=${RAGIC_API_URL}
       - RAGIC_API_KEY=${RAGIC_API_KEY}
       - UPLOAD_DIR=/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - uploads:/uploads
     depends_on:
@@ -29,7 +32,7 @@ services:
   db:
     image: postgres:16-alpine
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_DB: taicca_onboarding
       POSTGRES_USER: taicca
