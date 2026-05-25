@@ -20,7 +20,7 @@ services:
       - "3001:3000"
     environment:
       - DATABASE_URL=postgresql://taicca:taicca_pass@db:5432/taicca_onboarding
-      - NEXTAUTH_URL=http://metalpig.synology.me:3001
+      - NEXTAUTH_URL=https://metalpig.synology.me:3443
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
