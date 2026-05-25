@@ -115,8 +115,6 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
   const pStyle = `font-size:${fs}px;color:${cfg.textColor};margin:0 0 10px;line-height:1.8;`
   const deadlineStyle = `background:${cfg.deadlineBoxBg};border-left:4px solid ${cfg.deadlineBoxBorder};padding:10px 16px;margin:0 0 14px;border-radius:2px;font-size:${fs}px;color:${cfg.deadlineBoxText};`
   const btnStyle = `display:inline-block;background:${cfg.buttonBg};color:${cfg.buttonText};padding:13px 28px;text-decoration:none;font-weight:bold;border-radius:4px;font-size:15px;margin:4px 0 10px;`
-  const attachStyle = `display:inline-block;border:1px solid ${cfg.buttonBg};color:${cfg.buttonBg};padding:7px 16px;text-decoration:none;font-size:13px;border-radius:3px;margin:4px 4px 0 0;`
-
   const button = `<a href="${data.onboardingUrl}" style="${btnStyle}">${cfg.buttonLabel}</a>`
   // 壹段只保留主按鈕，填寫員工基本資料表單移至貳段
   const buttonGroup = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 10px;">${button}</div>`
@@ -125,8 +123,6 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
   const formsButton = data.formsUrl
     ? `<div style="margin-top:12px;"><a href="${data.formsUrl}" style="${btnStyle}background:#555555;">→ 填寫員工基本資料表單</a></div>`
     : ''
-
-  const attachLinks = '' // Word 下載連結已移除
 
   // 壹 section 按鈕位置
   const warning = `<div style="${deadlineStyle}">${sub(cfg.sec1Warning, c)}</div>`

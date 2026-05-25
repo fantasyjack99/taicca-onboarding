@@ -74,22 +74,6 @@ function emptyRows(prefix: string, fields: string[], count: number, existing: nu
   return acc
 }
 
-// ── 性別勾選格式 ─────────────────────────────────────
-function genderCheckbox(gender: string | null | undefined): string {
-  const g = v(gender)
-  if (g === '男' || g === 'Male')   return '□女F ☑男M'
-  if (g === '女' || g === 'Female') return '☑女F □男M'
-  return g || '□女F □男M'
-}
-
-// ── 婚姻狀況勾選格式 ─────────────────────────────────
-function maritalCheckbox(status: string | null | undefined): string {
-  const s = v(status)
-  if (s === '已婚' || s === 'Married')   return '□單身Single     ☑ 已婚 Married'
-  if (s === '未婚' || s === 'Single')    return '☑單身Single     □ 已婚 Married'
-  if (s === '離婚' || s === 'Divorced')  return '□單身Single     □ 已婚 Married'
-  return s || '□單身Single     □ 已婚 Married'
-}
 
 // ── 勞工退休金勾選格式 ───────────────────────────────
 function laborPensionText(self: boolean | null | undefined, rate: string | null | undefined): string {

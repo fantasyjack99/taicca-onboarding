@@ -99,8 +99,8 @@ function AddressShortcuts({
 
 // ════════════════════════════════════════════════════
 export default function EmployeeFormClient(props: Props) {
-  const { token, name, taiccaEmail, englishFirst, englishLast,
-          department, division, title, startDate, alreadySubmitted, savedData } = props
+  const { token, name, taiccaEmail,
+          department, division, title, alreadySubmitted, savedData } = props
   const s = savedData as Record<string, unknown> | null
 
   // 語言
@@ -116,7 +116,7 @@ export default function EmployeeFormClient(props: Props) {
   const [bloodType,       setBloodType]        = useState(String(s?.bloodType || ''))
   const [gender,          setGender]           = useState(String(s?.gender || ''))
   const [maritalStatus,   setMaritalStatus]    = useState(String(s?.maritalStatus || ''))
-  const [childrenCount,   setChildrenCount]    = useState(String(s?.childrenCount || ''))  // 舊欄位，保留相容
+  const [childrenCount] = useState(String(s?.childrenCount || ''))  // 舊欄位，保留相容
   const [sonsCount,       setSonsCount]        = useState(String(s?.sonsCount || ''))
   const [daughtersCount,  setDaughtersCount]   = useState(String(s?.daughtersCount || ''))
   const [homePhone,       setHomePhone]        = useState(String(s?.homePhone || ''))
