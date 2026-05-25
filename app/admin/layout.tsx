@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import LogoutButton from './LogoutButton'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -47,16 +48,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', wordBreak: 'break-all' }}>
             {session.user?.email}
           </div>
-          <form method="POST" action="/api/auth/signout">
-            <input type="hidden" name="callbackUrl" value="/login" />
-            <button type="submit" style={{
-              background: '#fff', border: '1px solid var(--border)',
-              color: 'var(--text-secondary)', padding: '6px 14px',
-              borderRadius: 'var(--radius-md)', fontSize: '12px',
-              cursor: 'pointer', width: '100%', fontFamily: 'inherit',
-              transition: 'all 150ms',
-            }}>登出</button>
-          </form>
+          <LogoutButton />
         </div>
       </aside>
 
