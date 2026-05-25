@@ -106,12 +106,14 @@ export default async function AdminPage() {
                     <span className={statusClass[r.status]}>{statusLabel[r.status]}</span>
                   </td>
                   <td style={{ padding: '14px 16px' }}>
-                    <Link
-                      href={`/admin/${r.id}`}
-                      style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '13px' }}
-                    >
-                      查看 →
-                    </Link>
+                    {r.id ? (
+                      <Link
+                        href={`/admin/${r.id}`}
+                        style={{ color: 'var(--accent)', textDecoration: 'none', fontSize: '13px' }}
+                      >
+                        查看 →
+                      </Link>
+                    ) : <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>資料異常</span>}
                   </td>
                 </tr>
               ))}
