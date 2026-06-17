@@ -63,6 +63,56 @@ const TextInput = ({
   </div>
 )
 
+function ImageUploader({ label, value, onChange }: {
+  label: string; value: string; onChange: (url: string) => void
+}) {
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  async function upload(file: File) {
+    setUploading(true); setError('')
+    const form = new FormData()
+    form.append('file', file)
+    try {
+      const res = await fetch('/api/admin/template-images', { method: 'POST', body: form })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '上傳失敗')
+      onChange(data.url)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '上傳失敗')
+    } finally { setUploading(false) }
+  }
+
+  return (
+    <div style={{ marginBottom: '14px' }}>
+      <Label>{label}</Label>
+      {value ? (
+        <div style={{ position: 'relative', display: 'inline-block', marginTop: '6px' }}>
+          <img src={value} alt="" style={{ maxWidth: '100%', maxHeight: '120px', borderRadius: '4px', border: '1px solid #ddd' }} />
+          <button onClick={() => onChange('')} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '12px' }}>×</button>
+        </div>
+      ) : (
+        <div
+          tabIndex={0}
+          onPaste={(e) => {
+            for (const item of e.clipboardData.items) {
+              if (item.type.startsWith('image/')) { const f = item.getAsFile(); if (f) upload(f); break }
+            }
+          }}
+          onClick={() => inputRef.current?.click()}
+          style={{ marginTop: '6px', padding: '20px', border: '2px dashed #ddd', borderRadius: '4px', textAlign: 'center', cursor: 'pointer', fontSize: '12px', color: '#999' }}
+        >
+          {uploading ? '上傳中...' : '點擊選取 或 Ctrl+V 貼上圖片'}
+        </div>
+      )}
+      {error && <div style={{ fontSize: '11px', color: 'red', marginTop: '4px' }}>{error}</div>}
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f) }} />
+    </div>
+  )
+}
+
 // ─── 分頁標籤 ─────────────────────────────────────────
 const TABS = ['樣式', '按鈕', '壹', '貳', '參～伍', '頁首頁尾'] as const
 type Tab = typeof TABS[number]
@@ -207,12 +257,7 @@ export default function EmailTemplatePage() {
           onChange={(v) => set('sec1Body', v)}
           rows={3}
         />
-        <TextInput
-          label="插圖 URL（選填）"
-          value={cfg.sec1Image || ''}
-          onChange={(v) => set('sec1Image', v)}
-          hint="填入可公開存取的圖片網址，圖片顯示於段落底部"
-        />
+        <ImageUploader label="插圖（選填）" value={cfg.sec1Image || ''} onChange={(url) => set('sec1Image', url)} />
       </div>
     ),
 
@@ -236,12 +281,7 @@ export default function EmailTemplatePage() {
           顯示附件下載連結（員工基本資料卡、薪資扣繳同意書）
         </label>
         <div style={{ marginTop: '12px' }}>
-          <TextInput
-            label="插圖 URL（選填）"
-            value={cfg.sec2Image || ''}
-            onChange={(v) => set('sec2Image', v)}
-            hint="填入可公開存取的圖片網址，圖片顯示於段落底部"
-          />
+          <ImageUploader label="插圖（選填）" value={cfg.sec2Image || ''} onChange={(url) => set('sec2Image', url)} />
         </div>
       </div>
     ),
@@ -250,10 +290,10 @@ export default function EmailTemplatePage() {
       <div>
         <TextInput label="參、標題" value={cfg.sec3Heading} onChange={(v) => set('sec3Heading', v)} />
         <TextArea label="參、內容" value={cfg.sec3Body} onChange={(v) => set('sec3Body', v)} rows={3} />
-        <TextInput label="參、插圖 URL（選填）" value={cfg.sec3Image || ''} onChange={(v) => set('sec3Image', v)} hint="填入可公開存取的圖片網址" />
+        <ImageUploader label="參、插圖（選填）" value={cfg.sec3Image || ''} onChange={(url) => set('sec3Image', url)} />
         <TextInput label="肆、標題" value={cfg.sec4Heading} onChange={(v) => set('sec4Heading', v)} />
         <TextArea label="肆、內容" value={cfg.sec4Body} onChange={(v) => set('sec4Body', v)} rows={4} hint="支援 HTML 標籤" />
-        <TextInput label="肆、插圖 URL（選填）" value={cfg.sec4Image || ''} onChange={(v) => set('sec4Image', v)} hint="填入可公開存取的圖片網址" />
+        <ImageUploader label="肆、插圖（選填）" value={cfg.sec4Image || ''} onChange={(url) => set('sec4Image', url)} />
         <TextInput label="伍、標題" value={cfg.sec5Heading} onChange={(v) => set('sec5Heading', v)} />
         <TextArea
           label="伍、項目清單"
@@ -262,7 +302,7 @@ export default function EmailTemplatePage() {
           rows={6}
           hint="每行一個項目"
         />
-        <TextInput label="伍、插圖 URL（選填）" value={cfg.sec5Image || ''} onChange={(v) => set('sec5Image', v)} hint="填入可公開存取的圖片網址" />
+        <ImageUploader label="伍、插圖（選填）" value={cfg.sec5Image || ''} onChange={(url) => set('sec5Image', url)} />
       </div>
     ),
 

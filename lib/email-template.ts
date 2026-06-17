@@ -146,8 +146,11 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
     sec1Inner = warning + sec1body
   }
 
-  const imgBlock = (url?: string) =>
-    url ? `<div style="text-align:center;margin:12px 0 4px;"><img src="${url}" style="max-width:100%;height:auto;border-radius:4px;" alt=""></div>` : ''
+  const imgBlock = (url?: string) => {
+    if (!url) return ''
+    const absUrl = url.startsWith('/') ? `${data.baseUrl}${url}` : url
+    return `<div style="text-align:center;margin:12px 0 4px;"><img src="${absUrl}" style="max-width:100%;height:auto;border-radius:4px;" alt=""></div>`
+  }
 
   const sec5Items = cfg.sec5Items.split('\n').filter(Boolean)
     .map(item => `<p style="margin:0 0 6px;font-size:${fs}px;color:${cfg.textColor};">${sub(item, c)}</p>`).join('')
