@@ -207,6 +207,12 @@ export default function EmailTemplatePage() {
           onChange={(v) => set('sec1Body', v)}
           rows={3}
         />
+        <TextInput
+          label="插圖 URL（選填）"
+          value={cfg.sec1Image || ''}
+          onChange={(v) => set('sec1Image', v)}
+          hint="填入可公開存取的圖片網址，圖片顯示於段落底部"
+        />
       </div>
     ),
 
@@ -229,6 +235,14 @@ export default function EmailTemplatePage() {
           />
           顯示附件下載連結（員工基本資料卡、薪資扣繳同意書）
         </label>
+        <div style={{ marginTop: '12px' }}>
+          <TextInput
+            label="插圖 URL（選填）"
+            value={cfg.sec2Image || ''}
+            onChange={(v) => set('sec2Image', v)}
+            hint="填入可公開存取的圖片網址，圖片顯示於段落底部"
+          />
+        </div>
       </div>
     ),
 
@@ -236,8 +250,10 @@ export default function EmailTemplatePage() {
       <div>
         <TextInput label="參、標題" value={cfg.sec3Heading} onChange={(v) => set('sec3Heading', v)} />
         <TextArea label="參、內容" value={cfg.sec3Body} onChange={(v) => set('sec3Body', v)} rows={3} />
+        <TextInput label="參、插圖 URL（選填）" value={cfg.sec3Image || ''} onChange={(v) => set('sec3Image', v)} hint="填入可公開存取的圖片網址" />
         <TextInput label="肆、標題" value={cfg.sec4Heading} onChange={(v) => set('sec4Heading', v)} />
         <TextArea label="肆、內容" value={cfg.sec4Body} onChange={(v) => set('sec4Body', v)} rows={4} hint="支援 HTML 標籤" />
+        <TextInput label="肆、插圖 URL（選填）" value={cfg.sec4Image || ''} onChange={(v) => set('sec4Image', v)} hint="填入可公開存取的圖片網址" />
         <TextInput label="伍、標題" value={cfg.sec5Heading} onChange={(v) => set('sec5Heading', v)} />
         <TextArea
           label="伍、項目清單"
@@ -246,6 +262,7 @@ export default function EmailTemplatePage() {
           rows={6}
           hint="每行一個項目"
         />
+        <TextInput label="伍、插圖 URL（選填）" value={cfg.sec5Image || ''} onChange={(v) => set('sec5Image', v)} hint="填入可公開存取的圖片網址" />
       </div>
     ),
 

@@ -40,6 +40,13 @@ export interface EmailTemplateConfig {
   sec5Heading:  string
   sec5Items:    string       // 每行一個項目
   footerText:   string
+
+  // ── 各段落插圖（選填，填入可公開存取的圖片 URL）──────
+  sec1Image?:   string
+  sec2Image?:   string
+  sec3Image?:   string
+  sec4Image?:   string
+  sec5Image?:   string
 }
 
 export const DEFAULT_TEMPLATE: EmailTemplateConfig = {
@@ -79,6 +86,8 @@ export const DEFAULT_TEMPLATE: EmailTemplateConfig = {
 
   sec5Heading: '伍、報到當日請攜帶',
   sec5Items: '身分證、戶口名簿（或戶籍謄本）\n最高學歷證書\n薪轉銀行存摺封面影本\n離職（服務）證明等正本（影印後發還）\n六個月內有效之【勞工一般體格檢查】報告一份',
+
+  sec1Image: '', sec2Image: '', sec3Image: '', sec4Image: '', sec5Image: '',
 
   footerText: '陳佩芝｜Tel：+886-2-27458186#602｜Fax：+886-2-27492436｜Email：phyllis@taicca.tw<br>文化內容策進院｜行政管理處｜台北市105402松山區民生東路三段158號5樓',
 }
@@ -137,8 +146,11 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
     sec1Inner = warning + sec1body
   }
 
+  const imgBlock = (url?: string) =>
+    url ? `<div style="text-align:center;margin:12px 0 4px;"><img src="${url}" style="max-width:100%;height:auto;border-radius:4px;" alt=""></div>` : ''
+
   const sec5Items = cfg.sec5Items.split('\n').filter(Boolean)
-    .map(item => `<li style="margin-bottom:4px;font-size:${fs}px;">${sub(item, c)}</li>`).join('')
+    .map(item => `<p style="margin:0 0 6px;font-size:${fs}px;color:${cfg.textColor};">${sub(item, c)}</p>`).join('')
 
   return `<!DOCTYPE html>
 <html lang="zh-TW">
@@ -163,6 +175,7 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
     <div style="${sectionStyle}">
       <h2 style="${h2Style}">${sub(cfg.sec1Heading, c)}</h2>
       ${sec1Inner}
+      ${imgBlock(cfg.sec1Image)}
     </div>
 
     ${cfg.buttonPosition === 'after-sec1' ? `<div style="margin:8px 0 16px;">${buttonGroup}</div>` : ''}
@@ -172,25 +185,29 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
       <h2 style="${h2Style}">${sub(cfg.sec2Heading, c)}</h2>
       <p style="${pStyle}">${sub(cfg.sec2Body, c)}</p>
       ${formsButton}
+      ${imgBlock(cfg.sec2Image)}
     </div>
 
     <!-- 參 -->
     <div style="${sectionStyle}">
       <h2 style="${h2Style}">${sub(cfg.sec3Heading, c)}</h2>
       <p style="${pStyle}">${sub(cfg.sec3Body, c)}</p>
+      ${imgBlock(cfg.sec3Image)}
     </div>
 
     <!-- 肆 -->
     <div style="${sectionStyle}">
       <h2 style="${h2Style}">${sub(cfg.sec4Heading, c)}</h2>
       <p style="${pStyle}">${sub(cfg.sec4Body, c)}</p>
+      ${imgBlock(cfg.sec4Image)}
     </div>
 
     <!-- 伍 -->
     <div style="${sectionStyle}">
       <h2 style="${h2Style}">${sub(cfg.sec5Heading, c)}</h2>
       <p style="font-size:${fs}px;color:${cfg.textColor};margin:0 0 8px;">請於報到當日<strong>上午 9 點整</strong>攜帶：</p>
-      <ul style="margin:0;padding-left:20px;">${sec5Items}</ul>
+      <div>${sec5Items}</div>
+      ${imgBlock(cfg.sec5Image)}
     </div>
   </div>
 

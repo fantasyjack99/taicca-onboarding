@@ -140,7 +140,7 @@ export default function NewEmployeePage() {
             style={inputStyle}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="例：鄭國宏"
+            placeholder="請輸入姓名"
             required
           />
         </div>
@@ -184,7 +184,7 @@ export default function NewEmployeePage() {
             style={inputStyle}
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="例：一級專員"
+            placeholder="請輸入職稱"
             required
           />
         </div>
@@ -208,7 +208,7 @@ export default function NewEmployeePage() {
             style={inputStyle}
             value={form.contactEmail}
             onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-            placeholder="personal@gmail.com"
+            placeholder="請輸入聯絡信箱"
             required
           />
         </div>
