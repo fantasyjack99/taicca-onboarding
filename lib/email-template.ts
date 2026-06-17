@@ -155,7 +155,7 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
   const sec5Items = cfg.sec5Items.split('\n').filter(Boolean)
     .map(item => `<p style="margin:0 0 6px;font-size:${fs}px;color:${cfg.textColor};">${sub(item, c)}</p>`).join('')
 
-  return `<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html lang="zh-TW">
 <head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -221,4 +221,6 @@ export function renderEmailHtml(cfg: EmailTemplateConfig, data: RenderData): str
     </div>
   </div>
 </body></html>`
+  // 將正文中直接貼入的相對路徑圖片（/uploads/...）轉為絕對 URL，讓 email client 可正確載入
+  return html.replace(/src="\//g, `src="${data.baseUrl}/`)
 }

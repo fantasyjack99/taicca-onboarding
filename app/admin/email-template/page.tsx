@@ -29,24 +29,69 @@ const ColorRow = ({
   </div>
 )
 
-const TextArea = ({
-  label, value, onChange, rows = 3, hint,
-}: { label: string; value: string; onChange: (v: string) => void; rows?: number; hint?: string }) => (
-  <div style={{ marginBottom: '14px' }}>
-    <Label>{label}</Label>
-    {hint && <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>{hint}</div>}
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      rows={rows}
-      style={{
-        width: '100%', padding: '8px 10px', border: '1px solid #ddd',
-        borderRadius: '4px', fontSize: '13px', fontFamily: 'inherit',
-        resize: 'vertical', lineHeight: 1.6,
-      }}
-    />
-  </div>
-)
+function TextArea({ label, value, onChange, rows = 3, hint }: {
+  label: string; value: string; onChange: (v: string) => void; rows?: number; hint?: string
+}) {
+  const [uploading, setUploading] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const pendingCursor = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (pendingCursor.current !== null && textareaRef.current) {
+      textareaRef.current.selectionStart = pendingCursor.current
+      textareaRef.current.selectionEnd = pendingCursor.current
+      pendingCursor.current = null
+    }
+  })
+
+  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = Array.from(e.clipboardData.items)
+    const imageItem = items.find(item => item.type.startsWith('image/'))
+    if (!imageItem) return
+    e.preventDefault()
+    const file = imageItem.getAsFile()
+    if (!file) return
+    const start = textareaRef.current?.selectionStart ?? value.length
+    const end = textareaRef.current?.selectionEnd ?? start
+    setUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/admin/template-images', { method: 'POST', body: form })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '上傳失敗')
+      const imgTag = `<img src="${data.url}" style="max-width:100%;height:auto;display:block;margin:8px 0;">`
+      const newValue = value.substring(0, start) + imgTag + value.substring(end)
+      pendingCursor.current = start + imgTag.length
+      onChange(newValue)
+    } catch {
+      // 上傳失敗時靜默，讓使用者重試
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div style={{ marginBottom: '14px' }}>
+      <Label>{label}</Label>
+      {hint && <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>{hint}</div>}
+      {uploading && <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>圖片上傳中...</div>}
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onPaste={handlePaste}
+        rows={rows}
+        style={{
+          width: '100%', padding: '8px 10px',
+          border: `1px solid ${uploading ? '#aaa' : '#ddd'}`,
+          borderRadius: '4px', fontSize: '13px', fontFamily: 'inherit',
+          resize: 'vertical', lineHeight: 1.6,
+        }}
+      />
+    </div>
+  )
+}
 
 const TextInput = ({
   label, value, onChange, hint,
@@ -62,57 +107,6 @@ const TextInput = ({
     />
   </div>
 )
-
-function ImageUploader({ label, value, onChange }: {
-  label: string; value: string; onChange: (url: string) => void
-}) {
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  async function upload(file: File) {
-    setUploading(true); setError('')
-    const form = new FormData()
-    form.append('file', file)
-    try {
-      const res = await fetch('/api/admin/template-images', { method: 'POST', body: form })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || '上傳失敗')
-      onChange(data.url)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '上傳失敗')
-    } finally { setUploading(false) }
-  }
-
-  return (
-    <div style={{ marginBottom: '14px' }}>
-      <Label>{label}</Label>
-      {value ? (
-        <div style={{ position: 'relative', display: 'inline-block', marginTop: '6px' }}>
-          <img src={value} alt="" style={{ maxWidth: '100%', maxHeight: '120px', borderRadius: '4px', border: '1px solid #ddd' }} />
-          <button onClick={() => onChange('')} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '12px' }}>×</button>
-        </div>
-      ) : (
-        <div
-          tabIndex={0}
-          onPaste={(e) => {
-            const items = Array.from(e.clipboardData.items)
-            for (const item of items) {
-              if (item.type.startsWith('image/')) { const f = item.getAsFile(); if (f) upload(f); break }
-            }
-          }}
-          onClick={() => inputRef.current?.click()}
-          style={{ marginTop: '6px', padding: '20px', border: '2px dashed #ddd', borderRadius: '4px', textAlign: 'center', cursor: 'pointer', fontSize: '12px', color: '#999' }}
-        >
-          {uploading ? '上傳中...' : '點擊選取 或 Ctrl+V 貼上圖片'}
-        </div>
-      )}
-      {error && <div style={{ fontSize: '11px', color: 'red', marginTop: '4px' }}>{error}</div>}
-      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f) }} />
-    </div>
-  )
-}
 
 // ─── 分頁標籤 ─────────────────────────────────────────
 const TABS = ['樣式', '按鈕', '壹', '貳', '參～伍', '頁首頁尾'] as const
@@ -257,8 +251,8 @@ export default function EmailTemplatePage() {
           value={cfg.sec1Body}
           onChange={(v) => set('sec1Body', v)}
           rows={3}
+          hint="支援 HTML 標籤；可 Ctrl+V 貼上圖片"
         />
-        <ImageUploader label="插圖（選填）" value={cfg.sec1Image || ''} onChange={(url) => set('sec1Image', url)} />
       </div>
     ),
 
@@ -270,7 +264,7 @@ export default function EmailTemplatePage() {
           value={cfg.sec2Body}
           onChange={(v) => set('sec2Body', v)}
           rows={4}
-          hint="支援 HTML 標籤，如 <strong>"
+          hint="支援 HTML 標籤，如 <strong>；可 Ctrl+V 貼上圖片"
         />
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', marginTop: '4px' }}>
           <input
@@ -281,29 +275,23 @@ export default function EmailTemplatePage() {
           />
           顯示附件下載連結（員工基本資料卡、薪資扣繳同意書）
         </label>
-        <div style={{ marginTop: '12px' }}>
-          <ImageUploader label="插圖（選填）" value={cfg.sec2Image || ''} onChange={(url) => set('sec2Image', url)} />
-        </div>
       </div>
     ),
 
     '參～伍': (
       <div>
         <TextInput label="參、標題" value={cfg.sec3Heading} onChange={(v) => set('sec3Heading', v)} />
-        <TextArea label="參、內容" value={cfg.sec3Body} onChange={(v) => set('sec3Body', v)} rows={3} />
-        <ImageUploader label="參、插圖（選填）" value={cfg.sec3Image || ''} onChange={(url) => set('sec3Image', url)} />
+        <TextArea label="參、內容" value={cfg.sec3Body} onChange={(v) => set('sec3Body', v)} rows={3} hint="支援 HTML 標籤；可 Ctrl+V 貼上圖片" />
         <TextInput label="肆、標題" value={cfg.sec4Heading} onChange={(v) => set('sec4Heading', v)} />
-        <TextArea label="肆、內容" value={cfg.sec4Body} onChange={(v) => set('sec4Body', v)} rows={4} hint="支援 HTML 標籤" />
-        <ImageUploader label="肆、插圖（選填）" value={cfg.sec4Image || ''} onChange={(url) => set('sec4Image', url)} />
+        <TextArea label="肆、內容" value={cfg.sec4Body} onChange={(v) => set('sec4Body', v)} rows={4} hint="支援 HTML 標籤；可 Ctrl+V 貼上圖片" />
         <TextInput label="伍、標題" value={cfg.sec5Heading} onChange={(v) => set('sec5Heading', v)} />
         <TextArea
           label="伍、項目清單"
           value={cfg.sec5Items}
           onChange={(v) => set('sec5Items', v)}
           rows={6}
-          hint="每行一個項目"
+          hint="每行一個項目；可 Ctrl+V 貼上圖片"
         />
-        <ImageUploader label="伍、插圖（選填）" value={cfg.sec5Image || ''} onChange={(url) => set('sec5Image', url)} />
       </div>
     ),
 
