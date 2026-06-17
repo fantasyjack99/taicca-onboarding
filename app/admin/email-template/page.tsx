@@ -96,7 +96,8 @@ function ImageUploader({ label, value, onChange }: {
         <div
           tabIndex={0}
           onPaste={(e) => {
-            for (const item of e.clipboardData.items) {
+            const items = Array.from(e.clipboardData.items)
+            for (const item of items) {
               if (item.type.startsWith('image/')) { const f = item.getAsFile(); if (f) upload(f); break }
             }
           }}
